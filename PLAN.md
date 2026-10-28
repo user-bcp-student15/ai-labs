@@ -3,10 +3,10 @@
 ## Alcance y prioridad
 
 La planificación inicial seleccionó únicamente H-AUTH-05, entonces el único
-hallazgo de auth con estado `Pendiente` en `HALLAZGOS.md`. H-AUTH-01 continúa
-`No encontrado`; H-AUTH-02, H-AUTH-03, H-AUTH-04, H-AUTH-06, H-AUTH-07 y
-H-AUTH-08 conservan su estado `Resuelto`. La ejecución posterior de H-AUTH-05
-queda registrada en su apartado y en la tabla de ejecuciones; los apartados
+hallazgo de auth con estado `Pendiente` en `HALLAZGOS.md`. El 2026-10-27 se
+añadió H-API-01 como pendiente para revisión del plan; no se reabren ni
+renumeran los hallazgos de auth. La ejecución posterior de H-AUTH-05 queda
+registrada en su apartado y en la tabla de ejecuciones; los apartados
 históricos de los demás IDs se conservan sin reabrirlos.
 
 ### Contrato actual y límites
@@ -256,6 +256,50 @@ inspeccionaron consumidores fuera de `auth/`.
 - **Resultado:** `AuthService` y `LoginResponse` separan la autenticación y el
   DTO; las pruebas de contrato HTTP pasan.
 
+## Item: H-API-01 — Token de auth incompatible con el verificador de API
+
+- **Hallazgo:** H-API-01, estado `Pendiente` en `HALLAZGOS.md`. El usuario
+  confirmó en esta conversación la aprobación del issue, la spec y la
+  arquitectura. Este plan queda pendiente de revisión humana antes de editar
+  código.
+- **Problema:** `auth` crea un JWT HS256 con `sub`, `role`, `iat` y `exp`
+  (`auth/src/main/java/com/bcp/workshop/auth/LegacyTokenUtil.java:38-51`).
+  `web` envía ese token como Bearer
+  (`web/src/app/dashboard/dashboard.component.ts:43`), mientras que `api`
+  espera un formato Base64 legado y no verifica firma
+  (`api/app/main.py:14,17-26`). Esto impide la interoperabilidad del flujo y
+  deja la identidad sin validación criptográfica.
+- **Cambio propuesto:** hacer que el límite de autenticación de `api` valide
+  el token firmado que emite `auth`, incluyendo firma, expiración e identidad
+  verificada. Mantener el contrato existente de login y el encabezado Bearer.
+  No conservar aceptación dual del formato legado sin una decisión explícita.
+- **Archivos previstos:** `api/app/main.py`,
+  `api/tests/test_api.py`, `api/requirements.txt` si la biblioteca aprobada lo
+  requiere, `compose.yaml` para pasar configuración externa sin versionar
+  secretos, y las secciones de API en `docs/ENDPOINTS.md` y `docs/TESTING.md`.
+  No se prevén cambios de código en `auth/` ni `web/`.
+- **Caracterización antes de tocar código:** añadir una prueba con un JWT
+  firmado conforme al contrato actual de `auth` y enviarlo a `GET /api/tasks`.
+  Ejecutar `python tools/lab.py test api` antes del cambio y registrar el
+  resultado real de línea base. Conservar pruebas del status y la forma de
+  respuesta de login y de la API.
+- **Después del cambio:** probar aceptación del token válido emitido por auth
+  y rechazo con `401` de tokens malformados, alterados y expirados. Verificar
+  que las rutas que comparten la dependencia de identidad mantienen su
+  comportamiento exitoso. Ejecutar `python tools/lab.py test auth`,
+  `python tools/lab.py test api` y `python tools/lab.py test web`, además de
+  una prueba integrada local con Compose y una clave de prueba externa.
+  Registrar resultados y cobertura reales en `docs/TESTING.md`, sin reducir
+  los quality gates.
+- **Decisiones pendientes antes de implementar:** elegir y revisar la
+  biblioteca JWT y su versión; confirmar el suministro seguro de
+  `AUTH_TOKEN_SECRET` para ambos servicios; confirmar si hay consumidores del
+  formato legado fuera de `web`; y acordar si se preserva el cuerpo actual de
+  error `401`, que no está documentado como contrato.
+- **Límites:** no cambiar claims, algoritmo, vigencia ni JSON de
+  `POST /auth/login`; no incorporar cambios de autorización por `owner`,
+  consultas SQL ni carga de archivos, que son hallazgos independientes.
+
 ## Estado y límites de verificación
 
 - `docs/ENDPOINTS.md` existe y separa el contrato observado, la ausencia de
@@ -278,6 +322,10 @@ inspeccionaron consumidores fuera de `auth/`.
   producción el 2026-10-26.
 - **Después de implementar:** por solicitud del usuario, la aprobación dejó de
   ser un requisito activo del plan. Se conserva aquí únicamente este historial.
+- **H-API-01, 2026-10-27:** el usuario confirmó la aprobación del issue, la
+  spec y la arquitectura, y autorizó registrar el hallazgo y este plan. La
+  revisión humana de este plan y la autorización para editar código siguen
+  pendientes.
 
 ## Ejecuciones registradas
 

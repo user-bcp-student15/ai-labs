@@ -47,3 +47,13 @@ de esta conversación.
   Dependency-Check no pudo completar la descarga de NVD por falta de
   `NVD_API_KEY`; CodeQL y Dependency Review remotos no se ejecutaron. Véase
   `PLAN.md` y `docs/TESTING.md`.
+
+## Seguimiento — api
+
+| id | componente | hallazgo | tipo | explicacion | evidencia (archivo:linea) | severidad | estado |
+|---|---|---|---|---|---|---|---|
+| H-API-01 | api | El verificador de API no acepta el JWT firmado de auth y no verifica firma | Vulnerabilidad / integración | `auth` emite un JWT HS256 y `web` lo envía como Bearer; `api` decodifica un formato Base64 legado y compara campos sin validar una firma criptográfica. El flujo de login puede terminar en `401` al consultar la API y la identidad no queda autenticada criptográficamente. | `api/app/main.py:14,17-26`; `auth/src/main/java/com/bcp/workshop/auth/LegacyTokenUtil.java:38-51`; `web/src/app/dashboard/dashboard.component.ts:43` | alta | Pendiente |
+
+El issue, la spec y la arquitectura de H-API-01 fueron aprobados por el
+usuario en esta conversación. La implementación permanece pendiente de la
+revisión humana del plan en `PLAN.md`.
