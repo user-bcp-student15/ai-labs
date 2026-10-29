@@ -9,8 +9,8 @@ Alcance: componente `api/` del Issue #25 (HU-01). Comandos desde la raíz de ai-
 
 ## 2. Caracterización antes del cambio funcional
 
-- [ ] 2.1 Parametrizar en `api/tests/test_api.py` las cinco rutas protegidas (`GET/POST /api/tasks`, `GET /api/summary`, `POST /api/requirements`, `GET /api/backend-health`) con el token legado vigente, afirmando status y claves de la respuesta. Verificación: las pruebas pasan sobre el código sin modificar.
-- [ ] 2.2 Caracterizar los 401 de encabezado ausente, encabezado sin prefijo `Bearer` y Base64 inválido: status 401 y `detail` que empieza por `Invalid token: `. Verificación: las pruebas pasan sobre el código sin modificar.
+- [x] 2.1 Parametrizar en `api/tests/test_api.py` las cinco rutas protegidas (`GET/POST /api/tasks`, `GET /api/summary`, `POST /api/requirements`, `GET /api/backend-health`) con el token legado vigente, afirmando status y claves de la respuesta. Verificación: las pruebas pasan sobre el código sin modificar. Evidencia: pruebas en copia temporal de `9838e3d`, exit 0; no están en `api/tests/test_api.py`.
+- [x] 2.2 Caracterizar los 401 de encabezado ausente, encabezado sin prefijo `Bearer` y Base64 inválido: status 401 y `detail` que empieza por `Invalid token: `. Verificación: las pruebas pasan sobre el código sin modificar. Evidencia: pruebas en copia temporal de `9838e3d`, exit 0; no están en `api/tests/test_api.py`.
 - [x] 2.3 Caracterizar `GET /api/backend-health` con la llamada a `AUTH_HEALTH_URL` simulada, para éxito y fallo (`status: 0`). Verificación: las pruebas pasan sobre el código sin modificar. Evidencia: pruebas en copia temporal de `9838e3d`, exit 0; no están en `api/tests/test_api.py`.
 - [x] 2.4 Caracterizar la creación de tarea (`POST /api/tasks`, 201) y el archivo guardado en `POST /api/requirements` (201). Verificación: las pruebas pasan sobre el código sin modificar.
 
