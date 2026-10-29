@@ -121,7 +121,7 @@ def test_protected_routes_reject_missing_credential(tmp_path: Path, method: str,
     with TestClient(app) as client:
         response = client.request(method.upper(), path, **options)
     assert response.status_code == 401
-    assert response.json()["detail"].startswith("Invalid token: ")
+    assert response.json()["detail"] == "Invalid token: missing credential"
 
 
 def test_accepts_valid_credential_without_bearer_prefix(tmp_path: Path) -> None:
@@ -136,7 +136,7 @@ def test_rejects_invalid_credential_without_bearer_prefix(tmp_path: Path) -> Non
     with TestClient(app) as client:
         response = client.get("/api/tasks", headers={"Authorization": "invalid"})
     assert response.status_code == 401
-    assert response.json()["detail"].startswith("Invalid token: ")
+    assert response.json()["detail"] == "Invalid token: malformed"
 
 
 def b64url(data: dict) -> str:
@@ -169,14 +169,14 @@ def legacy_format_token() -> str:
 
 
 REJECTED_TOKENS = [
-    pytest.param(jwt_token(key="another-test-secret-that-is-also-long-enough"), id="wrong-signature"),
-    pytest.param(tampered_token(), id="tampered-payload"),
-    pytest.param(jwt_token(expires_in=-10), id="expired"),
-    pytest.param(unsigned_token(), id="alg-none"),
-    pytest.param(jwt.encode({"role": "STUDENT", "iat": int(time.time()), "exp": int(time.time()) + 3600}, SECRET, algorithm="HS256"), id="missing-sub"),
-    pytest.param(jwt.encode({"sub": "student", "iat": int(time.time()), "exp": int(time.time()) + 3600}, SECRET, algorithm="HS256"), id="missing-role"),
-    pytest.param(legacy_format_token(), id="legacy-format"),
-    pytest.param("not.a.jwt", id="malformed"),
+    pytest.param(jwt_token(key="another-test-secret-that-is-also-long-enough"), "invalid signature", id="wrong-signature"),
+    pytest.param(tampered_token(), "invalid signature", id="tampered-payload"),
+    pytest.param(jwt_token(expires_in=-10), "expired", id="expired"),
+    pytest.param(unsigned_token(), "algorithm not allowed", id="alg-none"),
+    pytest.param(jwt.encode({"role": "STUDENT", "iat": int(time.time()), "exp": int(time.time()) + 3600}, SECRET, algorithm="HS256"), "missing claim", id="missing-sub"),
+    pytest.param(jwt.encode({"sub": "student", "iat": int(time.time()), "exp": int(time.time()) + 3600}, SECRET, algorithm="HS256"), "missing claim", id="missing-role"),
+    pytest.param(legacy_format_token(), "malformed", id="legacy-format"),
+    pytest.param("not.a.jwt", "malformed", id="malformed"),
 ]
 
 
@@ -205,13 +205,13 @@ def test_accepts_token_with_auth_issuance_format(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(("method", "path", "options"), PROTECTED_CALLS)
-@pytest.mark.parametrize("credential", REJECTED_TOKENS)
-def test_protected_routes_reject_invalid_jwt(tmp_path: Path, method: str, path: str, options: dict, credential: str) -> None:
+@pytest.mark.parametrize("credential, reason", REJECTED_TOKENS)
+def test_protected_routes_reject_invalid_jwt(tmp_path: Path, method: str, path: str, options: dict, credential: str, reason: str) -> None:
     app = create_app(str(tmp_path / "workshop.db"), str(tmp_path / "uploads"))
     with TestClient(app) as client:
         response = client.request(method.upper(), path, headers=jwt_headers(credential), **options)
     assert response.status_code == 401
-    assert response.json()["detail"].startswith("Invalid token: ")
+    assert response.json()["detail"] == f"Invalid token: {reason}"
 
 
 def test_create_app_fails_without_token_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
