@@ -5,14 +5,15 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from helpers import TEST_TOKEN_TTL_SECONDS
 
 
-def token(username: str = "student", role: str = "STUDENT") -> str:
-    raw = f"{username}|{role}|{int(time.time()) + 3600}|WORKSHOP_SECRET_2026"
+def token(username: str = "student", role: str = "TRAINER") -> str:
+    raw = f"{username}|{role}|{int(time.time()) + TEST_TOKEN_TTL_SECONDS}|WORKSHOP_SECRET_2026"
     return base64.b64encode(raw.encode()).decode()
 
 
-def headers(username: str = "student", role: str = "STUDENT") -> dict[str, str]:
+def headers(username: str = "student", role: str = "TRAINER") -> dict[str, str]:
     return {"Authorization": f"Bearer {token(username, role)}"}
 
 

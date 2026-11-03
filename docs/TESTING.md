@@ -110,23 +110,24 @@ Todas con Python 3.13.15 sobre Windows. "Raíz" es `ai-labs/`; `api/` es el dire
 | 4 | `.venv\Scripts\python.exe -m pytest tests/test_endpoints.py --cov=app --cov-branch` | `api/` | no registrado | 87 pasaron, 1 xfail; cobertura 99% con solo estas pruebas (275 sentencias, 0 sin cubrir; 16 ramas, 1 parcial) | GT, PT, GS, PR, BH |
 | 5 | `python tools/lab.py test api` | raíz | 0 | **137 pasaron, 1 xfail**; cobertura 100.00% (gate de 85% cumplido); 1 aviso (`DeprecationWarning` de `starlette/testclient.py:45`, no de `api/app`) | todos |
 | 6 | `pytest` por archivo | `api/` | no registrado | `test_api.py` 4 pasaron; `test_characterization.py` 15; `test_findings.py` 29; `test_endpoints.py` 89 pasaron y 1 xfail | todos |
+| 7 | `python tools/lab.py test api` | raíz | 0 | **144 pasaron, 1 xfail**; cobertura 100.00% (283 sentencias, 20 ramas; gate de 85% cumplido); 1 aviso (`DeprecationWarning` de `starlette/testclient.py:45`) | H-API-17 |
 
-El resultado vigente es el de la ejecución 5 (código de salida 0, comprobado). La ejecución 1 terminó con 1; en las ejecuciones 2 y 5 se registró 0; en 3, 4 y 6 no se registró el código de salida, solo el resultado de pytest.
+El resultado vigente es el de la ejecución 7 (código de salida 0, comprobado). La ejecución 1 terminó con 1; en las ejecuciones 2, 5 y 7 se registró 0; en 3, 4 y 6 no se registró el código de salida, solo el resultado de pytest.
 
 Ejecuciones de pasos anteriores (resultados de `PLAN.md`): línea base 4 pruebas, 91.07%; 48 pruebas tras el refactor, 100%. No se repiten aquí.
 
 ### Cobertura
 
 - **Método:** `pytest-cov` (coverage.py 7.17.0) con `branch = true` y `source = ["app"]` (`api/pyproject.toml`). Porcentaje = (sentencias cubiertas + ramas cubiertas) / (sentencias + ramas). Gate del repositorio: `--cov-fail-under=85` sobre todo `app` (`tools/lab.py`), sin cambios.
-- **Cobertura del código modificado:** este paso no modificó código de `api/app/`. El código modificado por el refactor es todo `api/app/` (`main.py` modificado; el resto, archivos nuevos), así que coincide con el total:
+- **Cobertura del código modificado:** en la ejecución 7, `api/app/security.py` se modificó y quedó cubierto completamente; la cobertura global de `app` fue 100%:
 
 | Medida | Numerador | Denominador | Porcentaje |
 |---|---|---|---|
-| Sentencias | 275 | 275 | 100% |
-| Ramas | 16 | 16 | 100% |
-| Sentencias + ramas (cobertura reportada) | 291 | 291 | 100.00% |
+| Sentencias | 283 | 283 | 100% |
+| Ramas | 20 | 20 | 100% |
+| Sentencias + ramas (cobertura reportada) | 303 | 303 | 100.00% |
 
-- **Cobertura global (aparte):** la medición solo incluye `app`, y es la misma del cuadro: 100.00% (ejecución 5). No hay cobertura global de `tests/` ni de `.venv/`.
+- **Cobertura global (aparte):** la medición solo incluye `app`, y es la misma del cuadro: 100.00% (ejecución 7). No hay cobertura global de `tests/` ni de `.venv/`.
 - **Por archivo** (sentencias cubiertas / total; ramas cubiertas / total; ejecución 3):
 
 | Archivo | Sentencias | Ramas |

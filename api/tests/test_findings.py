@@ -14,7 +14,7 @@ import urllib3
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from helpers import auth_headers
+from helpers import auth_headers, build_token
 
 INJECTION_USERNAME = "x' OR '1'='1"
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -75,6 +75,48 @@ def test_task_response_is_a_declared_model(client: TestClient) -> None:  # H-API
 def test_create_rejects_invalid_values(client: TestClient, field: str, value: str) -> None:  # H-API-11
     payload = {"title": "ok", field: value}
     assert client.post("/api/tasks", headers=auth_headers(), json=payload).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("username", "role", "ttl_seconds"),
+    [
+        ("", "TRAINER", 5),
+        (" \t", "TRAINER", 5),
+        ("student", "STUDENT", 5),
+        ("student", "UNKNOWN", 5),
+        ("student", "TRAINER", 60),
+    ],
+    ids=["empty-username", "whitespace-username", "student-role", "unknown-role", "excessive-expiration"],
+)
+def test_token_with_invalid_identity_or_expiration_is_rejected(
+    client: TestClient, username: str, role: str, ttl_seconds: int
+) -> None:
+    headers = {"Authorization": f"Bearer {build_token(username, role, ttl_seconds)}"}
+
+    response = client.get("/api/tasks", headers=headers)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid token"}
+
+
+def test_invalid_identity_is_rejected_by_all_protected_endpoints(client: TestClient) -> None:
+    headers = {"Authorization": f"Bearer {build_token(' ', 'TRAINER', 5)}"}
+    responses = [
+        client.get("/api/tasks", headers=headers),
+        client.post("/api/tasks", headers=headers, json={"title": "not created"}),
+        client.get("/api/summary", headers=headers),
+        client.post("/api/requirements", headers=headers, files={"file": ("note.txt", b"content")}),
+        client.get("/api/backend-health", headers=headers),
+    ]
+
+    assert [response.status_code for response in responses] == [401] * 5
+    assert [response.json() for response in responses] == [{"detail": "Invalid token"}] * 5
+
+
+def test_token_with_supported_role_and_short_expiration_is_accepted(client: TestClient) -> None:
+    headers = {"Authorization": f"Bearer {build_token('student', 'TRAINER', 5)}"}
+
+    assert client.get("/api/tasks", headers=headers).status_code == 200
 
 
 def test_other_owner_query_is_forbidden(client: TestClient) -> None:  # H-API-02

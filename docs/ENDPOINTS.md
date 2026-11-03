@@ -20,9 +20,9 @@ API FastAPI de tareas y requerimientos (`api/`). Este documento describe el **co
 #### Autenticación (aplica a los 5 endpoints)
 
 - Header exacto: `Authorization: Bearer <token>` (`api/app/security.py:17-19`). Observado: el token también se acepta sin el prefijo `Bearer ` (comprobado con 200); se recomienda enviar siempre el prefijo.
-- Formato del token (legado, sigue vigente): texto en Base64 (UTF-8) de cuatro campos separados por `|`: `usuario|rol|expiración|secreto`. La expiración es un entero en segundos Unix; el secreto es compartido con el emisor y no se documenta aquí (`api/app/security.py:20-24`). La API no firma ni verifica emisor ni audiencia: ver riesgos pendientes (H-API-01).
+- Formato del token (legado, sigue vigente): texto en Base64 (UTF-8) de cuatro campos separados por `|`: `usuario|rol|expiración|secreto`. La expiración es un entero en segundos Unix; el secreto es compartido con el emisor y no se documenta aquí. La API rechaza usuario vacío o compuesto solo por espacios, roles distintos de `TRAINER`, tokens vencidos y expiraciones a más de 5 segundos en el futuro (`api/app/security.py`). La API no firma ni verifica emisor ni audiencia: ver riesgos pendientes (H-API-01).
 - Quién emite el token es el componente auth; no se verificó desde `api/` que el formato coincida (pregunta abierta 1).
-- La identidad es el campo `usuario` del token. El rol se lee pero no se usa para autorizar.
+- La identidad es el campo `usuario` del token. Se acepta solo el rol `TRAINER`; el rol no concede permisos adicionales ni se usa para autorizar recursos.
 - En los ejemplos, `<token>` es un token válido del usuario indicado (`student` o `trainer`).
 
 #### Formatos de error
@@ -36,7 +36,7 @@ Los mensajes de error de la aplicación son genéricos. El detalle técnico se r
 
 #### Error común a los 5 endpoints: token ausente o inválido
 
-- **401** cuando falta `Authorization`, el token no es Base64/UTF-8 válido, no tiene 4 campos, el secreto no coincide, la expiración no es un entero o ya venció (`api/app/security.py:17-27`).
+- **401** cuando falta `Authorization`, el token no es Base64/UTF-8 válido, no tiene 4 campos, el secreto no coincide, usuario o rol no cumplen las reglas anteriores, la expiración no es un entero, ya venció o está a más de 5 segundos en el futuro (`api/app/security.py`).
 
 ```json
 {"detail": "Invalid token"}
@@ -385,6 +385,8 @@ Aplica a todos los endpoints (`api/app/main.py:35-41`, `api/app/config.py:7,9-10
 | H-API-16 | Un nombre de archivo con `:` (p. ej. `a:b.txt`) se acepta en Windows (201 con `fileName` `b.txt`); en Linux el código debería responder 400 (no ejecutado); la regla de nombres del contrato debería ser igual en ambos sistemas. |
 
 ### Preguntas abiertas
+
+La API aplica un máximo de 5 segundos al tiempo restante hasta `exp`, y acepta solo el rol `TRAINER`; queda pendiente confirmar con auth que sus tokens cumplen estas reglas. El formato legado no incluye `issued-at`.
 
 1. ¿El componente auth emite exactamente el formato de token descrito (`usuario|rol|expiración|secreto` en Base64)? No se pudo verificar desde `api/`.
 2. ¿Debe rechazarse un `title` formado solo por espacios? Hoy se acepta (comprobado con `{"title": " "}`, 201).
