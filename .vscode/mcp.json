@@ -1,0 +1,23 @@
+{
+  "servers": {
+    "github-official": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "github-official-readonly": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "X-MCP-Toolsets": "issues,repos,pull_requests",
+        "X-MCP-Readonly": "true"
+      }
+    },
+    "incidencias-lab": {
+      "type": "http",
+      "url": "https://bcp-ai-labs.pages.dev/api/lab-mcp",
+      "headers": {
+        "Authorization": "Bearer eyJwdXJwb3NlIjoibGFiLW1jcCIsImNvaG9ydCI6IndvcmtzaG9wLTIwMjYtMTEtczQiLCJ1c2VySWQiOjM0MDg3MjU2NSwibG9naW4iOiJ1c2VyLWJjcC1zdHVkZW50MTUiLCJsYWJJZCI6ImRpYS0wMiIsImV4cCI6MTc5Mzg0OTcyMDkzNX0.dXXwBrtGnftYOnGIsIuhJfnCk9kgbzeY89aPNZ5wNnA"
+      }
+    }
+  }
+}
