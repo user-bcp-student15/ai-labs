@@ -17,6 +17,7 @@ import static org.hamcrest.Matchers.nullValue;
 class AuthResourceTest {
     private static final String VALID_USERNAME = "student";
     private static final String VALID_PASSWORD = "Workshop123!";
+    private static final String SQL_INJECTION_VALUE = "' OR '1'='1";
 
     private ValidatableResponse login(String username, String password) {
         return given()
@@ -78,6 +79,38 @@ class AuthResourceTest {
     @Test
     void rejectsPasswordWithSingleQuoteWith401() {
         login(VALID_USERNAME, "it's")
+                .statusCode(401)
+                .body("token", nullValue());
+    }
+
+    // Spec "Credenciales tratadas como datos / Inyección en el usuario".
+    @Test
+    void rejectsSqlInjectionInUsernameWith401AndNoToken() {
+        login(SQL_INJECTION_VALUE, "any-password")
+                .statusCode(401)
+                .body("token", nullValue());
+    }
+
+    // Spec "Credenciales tratadas como datos / Inyección en el usuario con comentario SQL".
+    @Test
+    void rejectsSqlCommentInjectionInUsernameWith401AndNoToken() {
+        login(SQL_INJECTION_VALUE + "' --", "any-password")
+                .statusCode(401)
+                .body("token", nullValue());
+    }
+
+    // Spec "Credenciales tratadas como datos / Inyección en la contraseña".
+    @Test
+    void rejectsSqlInjectionInPasswordWith401AndNoToken() {
+        login(VALID_USERNAME, SQL_INJECTION_VALUE)
+                .statusCode(401)
+                .body("token", nullValue());
+    }
+
+    // Spec "Credenciales tratadas como datos / Inyección en ambos campos".
+    @Test
+    void rejectsSqlInjectionInBothFieldsWith401AndNoToken() {
+        login(SQL_INJECTION_VALUE, SQL_INJECTION_VALUE)
                 .statusCode(401)
                 .body("token", nullValue());
     }
