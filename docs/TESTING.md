@@ -652,3 +652,47 @@ def test_backend_health_invalid_token_is_401_and_does_not_call_the_backend(
     assert (response.status_code, response.json()) == (401, INVALID_TOKEN_BODY)
     assert fake_backend.calls == []
 ```
+
+## auth
+
+### H-AUTH-01: caracterización del login (antes de parametrizar la consulta)
+
+- Componente `auth` (Quarkus, `@QuarkusTest` + RestAssured). Cambio OpenSpec `h-auth-01-parametrized-login-query`, tareas 1.1 a 1.7. No se modificó código de `auth/src/main`.
+- `docs/TESTING.md` no tenía pruebas de `auth`; la única existente era `AuthResourceTest.logsInWithWorkshopUser`, que se reutilizó y amplió.
+- El puerto de prueba 8081 estaba ocupado por un proceso `node.exe` ajeno; se ejecutó con `-Dquarkus.http.test-port=0` (sin cambiar configuración). Sin ese parámetro `mvn test` falla con `Port already bound: 8081`.
+
+| Prueba (`AuthResourceTest`) | Comportamiento que protege |
+|---|---|
+| `logsInWithWorkshopUser` (ampliada) | 200 con `token`, `expiresIn` 3600 y `user.username`, `user.displayName`, `user.role` (spec "Login válido conservado") |
+| `rejectsWrongPasswordWith401AndNoToken` | `student` con contraseña incorrecta: 401, `message`, sin `token` (spec "Credenciales incorrectas") |
+| `rejectsUnknownUserWith401AndNoToken` | Usuario inexistente: 401, `message`, sin `token` |
+| `rejectsEmptyOrBlankUsernameWith400` (2 casos) | `username` vacío o en blanco: 400 con `message` (spec "Campos vacíos") |
+| `rejectsEmptyOrBlankPasswordWith400` (2 casos) | `password` vacío o en blanco: 400 con `message` |
+| `rejectsPasswordWithSingleQuoteWith401` | `student` con `it's`: 401 y sin `token`, no 500 |
+
+| Paso | Comando (directorio `auth/`) | Resultado |
+|---|---|---|
+| 1.1 línea base | `mvn -B test -Dquarkus.http.test-port=0`, luego `mvn -B -q jacoco:report` | Salida 0; 1 prueba, 0 fallos. JaCoCo líneas: `AuthResource` 16/25, `LegacyDatabase` 16/21 |
+| 1.2 comprobación manual | Prueba temporal (eliminada) con `student` / `it's` y `-Dtest=...` | 401 `{"message":"Invalid user student or password"}`; el error de SQL (`near "s": syntax error`) se traga y devuelve `null` |
+| 1.3 a 1.7 | `mvn -B test -Dquarkus.http.test-port=0`, luego `mvn -B -q jacoco:report` | Salida 0; 8 pruebas, 0 fallos, 0 errores. JaCoCo líneas: `AuthResource` 19/25, `LegacyDatabase` 17/19 |
+
+### H-AUTH-01: pruebas de inyección, corrección y verificación
+
+Cambio `h-auth-01-parametrized-login-query`, tareas 2.1 a 4.4. Commits: `8799c84` (pruebas en rojo) y `22b8c7c` (corrección en `LegacyDatabase.findByCredentials`). Se mantiene `-Dquarkus.http.test-port=0` por el puerto 8081 ocupado.
+
+| Prueba (`AuthResourceTest`) | Escenario del spec que protege | Antes de la corrección | Después |
+|---|---|---|---|
+| `rejectsSqlInjectionInUsernameWith401AndNoToken` | Inyección en el usuario (`' OR '1'='1`) | Pasa (401): `AND` precede a `OR` y la contraseña no coincide; queda como regresión | Pasa |
+| `rejectsSqlCommentInjectionInUsernameWith401AndNoToken` | Inyección en el usuario con comentario SQL (`' OR '1'='1' --`) | Falla (200) | Pasa |
+| `rejectsSqlInjectionInPasswordWith401AndNoToken` | Inyección en la contraseña | Falla (200) | Pasa |
+| `rejectsSqlInjectionInBothFieldsWith401AndNoToken` | Inyección en ambos campos | Falla (200) | Pasa |
+
+| Paso | Comando | Resultado |
+|---|---|---|
+| 2.4 pruebas en rojo | `mvn -B test -Dquarkus.http.test-port=0` (en `auth/`) | Salida 1; 12 pruebas, 3 fallos (los tres esperados, 200 en vez de 401) |
+| 3.2 corrección | `mvn -B test -Dquarkus.http.test-port=0` (en `auth/`) | Salida 0; 12 pruebas, 0 fallos |
+| 4.1 búsqueda de concatenación | `git grep -n -E "(username\|password)\s*\+\|\+\s*(username\|password)" -- auth/src/main` | Sin concatenación en SQL; solo el mensaje 401 de `AuthResource` y `LegacyTokenUtil` (fuera de alcance). `git diff --name-only HEAD~3 HEAD`: solo `LegacyDatabase.java` y `AuthResourceTest.java` |
+| 4.2 cobertura | `mvn -B -q jacoco:report` (en `auth/`) | `findByCredentials`: 10 de 11 líneas (91 %) y 53 de 56 instrucciones; solo queda sin cubrir el `catch` de error de SQL |
+| 4.3 validación | `openspec validate h-auth-01-parametrized-login-query` | Cambio válido; cada escenario del spec tiene prueba asociada |
+
+Criterios de aceptación del Issue #23: (1) `findByCredentials` usa `PreparedStatement` con `setString`, sin concatenar; (2) `student` / `Workshop123!` responde 200 con `user.username` y `token` (`logsInWithWorkshopUser`); (3) `' OR '1'='1` en usuario o contraseña responde 401 sin `token`; (4) `AuthResourceTest` incluye las pruebas de inyección y `mvn test` pasa desde `auth/`.
